@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Konfigurator für den Eigenbau eines Setzkastens: Plattenbedarf, Zuschnittliste und Aufteilung auf der Platte.">
+<title>Setzkasten Zuschnitt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Konfigurator links (Eingaben), rechts Ergebnisse. Optik: Karopapier mit blauem Kugelschreiber, Sperrholz-Töne für die Teile. */
+:root{
+  --paper:#f7f8f5; --card:#ffffff; --ink:#1b2230; --muted:#5d6678; --line:#d5dae3; --grid:#e6eaf0;
+  --pen:#2340b5; --pen-soft:#e4e9fb; --warn:#b8321f; --warn-soft:#fbe9e5;
+  --c-back:#efe6d2; --c-side:#d3a96e; --c-shelf:#ebcb92; --c-stub:#8ea4e6; --pc-text:#1b2230;
+  --f-display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#12151c; --card:#1a1f29; --ink:#e7eaf2; --muted:#98a1b3; --line:#2d3442; --grid:#1b212c;
+  --pen:#93a8ff; --pen-soft:#232c4d; --warn:#ff8f7a; --warn-soft:#3a1f1b;
+  --c-back:#8b836c; --c-side:#c79b5c; --c-shelf:#dcb677; --c-stub:#8fa4ee; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#12151c; --card:#1a1f29; --ink:#e7eaf2; --muted:#98a1b3; --line:#2d3442; --grid:#1b212c;
+  --pen:#93a8ff; --pen-soft:#232c4d; --warn:#ff8f7a; --warn-soft:#3a1f1b;
+  --c-back:#8b836c; --c-side:#c79b5c; --c-shelf:#dcb677; --c-stub:#8fa4ee; color-scheme:dark}
+
+*{box-sizing:border-box}
+:root{color-scheme:light}
+body{margin:0}
+body{
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px;
+  color:var(--ink); font:15px/1.5 var(--f-body);
+  padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2{font-family:var(--f-display);font-weight:700;letter-spacing:-.01em;text-wrap:balance;margin:0}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.1}
+h2{font-size:19px;line-height:1.2}
+.lead{max-width:62ch;color:var(--muted);margin:8px 0 0}
+header{margin-bottom:22px}
+.grid{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+.panel,.card{background:var(--card);border:1px solid var(--line);border-radius:10px}
+.panel{padding:6px 16px 16px;position:sticky;top:12px}
+@media (max-width:860px){.panel{position:static}}
+fieldset{border:0;border-top:1px dashed var(--line);margin:0;padding:14px 0 2px;min-width:0}
+fieldset:first-of-type{border-top:0}
+legend{font:600 11px/1 var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--pen);padding:0;margin-bottom:10px;float:left;width:100%}
+legend+*{clear:both}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin-bottom:10px}
+.f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.f.wide{grid-column:1/-1}
+label,.lbl{font-size:12.5px;color:var(--muted)}
+.inp{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden}
+.inp:focus-within{border-color:var(--pen);box-shadow:0 0 0 2px var(--pen-soft)}
+.inp input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:500 15px var(--f-mono);padding:7px 9px;outline:none;width:100%}
+.inp span{padding:0 9px 0 0;font-size:12px;color:var(--muted)}
+select{width:100%;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font:14px var(--f-body);padding:8px 9px}
+select:focus-visible,button:focus-visible,input[type=checkbox]:focus-visible{outline:2px solid var(--pen);outline-offset:2px}
+.chk{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:var(--ink);margin-bottom:9px;cursor:pointer}
+.chk input{margin-top:3px;accent-color:var(--pen)}
+.chk small{display:block;color:var(--muted);font-size:12px}
+
+.out{display:flex;flex-direction:column;gap:20px;min-width:0;transition:opacity .15s}
+.out.stale{opacity:.35}
+.err{background:var(--warn-soft);color:var(--warn);border:1px solid var(--warn);border-radius:8px;padding:10px 14px;font-weight:500}
+.warn{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13.5px;margin:0 0 12px}
+.card{padding:16px 18px}
+.card>h2{margin-bottom:12px}
+.sub{color:var(--muted);font-size:13px;margin:-6px 0 12px}
+
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;padding:0;overflow:hidden;background:var(--line)}
+.kpi{padding:14px 18px;min-width:0;background:var(--card)}
+@media (max-width:420px){.kpis{grid-template-columns:minmax(0,1fr)}}
+.kpi .k{font-size:12px;color:var(--muted)}
+.kpi .v{font:500 20px/1.3 var(--f-mono);color:var(--pen);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kpi .n{font-size:12px;color:var(--muted)}
+
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:18px;align-items:center}
+@media (max-width:760px){.split{grid-template-columns:minmax(0,1fr)}}
+svg{display:block;width:100%;height:auto;max-width:100%}
+svg text{font-family:var(--f-mono)}
+.pc{stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke}
+.pc.back{fill:var(--c-back)}.pc.side{fill:var(--c-side)}.pc.shelf{fill:var(--c-shelf)}.pc.stub,.pc.strip{fill:var(--c-stub)}
+.pt{fill:var(--pc-text)}
+.dim{stroke:var(--muted);stroke-width:.4;fill:none}
+.dt{fill:var(--muted)}
+.sheetbg{fill:url(#hatch);stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke}
+.hatchline{stroke:var(--line);stroke-width:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);margin:10px 0 0}
+.legend i{display:inline-block;width:12px;height:12px;border:1px solid var(--ink);border-radius:2px;vertical-align:-2px;margin-right:6px}
+.legend i.back{background:var(--c-back)}.legend i.side{background:var(--c-side)}.legend i.shelf{background:var(--c-shelf)}.legend i.stub{background:var(--c-stub)}
+
+.formula{font:400 14px/1.8 var(--f-mono);color:var(--pen);overflow-wrap:anywhere}
+.formula .res{font-weight:500}
+.formula .plain{color:var(--muted);font-family:var(--f-body);font-size:13px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font:600 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 10px;border-bottom:2px solid var(--ink)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num,th.num{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+td small{display:block;color:var(--muted);font-size:12px}
+tfoot td{border-bottom:0;font-weight:600}
+.sw{display:inline-block;width:10px;height:10px;border:1px solid var(--ink);border-radius:2px;margin-right:8px}
+.sw.back{background:var(--c-back)}.sw.side{background:var(--c-side)}.sw.shelf{background:var(--c-shelf)}.sw.stub,.sw.strip{background:var(--c-stub)}
+
+.order{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.order-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+button{font:500 13.5px var(--f-body);color:var(--card);background:var(--pen);border:0;border-radius:6px;padding:7px 14px;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+pre{margin:0;background:var(--paper);border:1px dashed var(--line);border-radius:8px;padding:12px 14px;font:13px/1.55 var(--f-mono);overflow-x:auto;white-space:pre}
+.sheets{display:grid;gap:18px}
+.sheet figcaption{font-size:13px;color:var(--muted);margin-top:6px}
+.sheet{margin:0}
+ol.steps{margin:10px 0 0;padding-left:22px;font-size:13.5px;display:flex;flex-direction:column;gap:4px;max-width:80ch}
+ul.notes{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--ink)}
+ul.notes li{max-width:75ch}
+.foot{margin-top:26px;font-size:12.5px;color:var(--muted);max-width:75ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <h1>Setzkasten Zuschnitt</h1>
+  <p class="lead">Fächer, Plattenstärke und Plattenmaß eintragen. Das Tool berechnet den Plattenbedarf, die Zuschnittliste für den Baumarkt und zeigt, wie die Teile auf der Platte liegen, damit möglichst wenig gesägt werden muss.</p>
+</header>
+
+<div class="grid">
+<form id="cfg" class="panel" onsubmit="return false" autocomplete="off">
+  <fieldset>
+    <legend>Fächer</legend>
+    <div class="row">
+      <div class="f"><label for="cols">Spalten</label><div class="inp"><input id="cols" type="number" inputmode="numeric" min="1" max="20" step="1" value="4"></div></div>
+      <div class="f"><label for="rows">Reihen</label><div class="inp"><input id="rows" type="number" inputmode="numeric" min="1" max="20" step="1" value="3"></div></div>
+      <div class="f"><label for="cw">Fachbreite</label><div class="inp"><input id="cw" type="number" inputmode="decimal" min="1" step="0.1" value="10"><span>cm</span></div></div>
+      <div class="f"><label for="ch">Fachhöhe</label><div class="inp"><input id="ch" type="number" inputmode="decimal" min="1" step="0.1" value="12"><span>cm</span></div></div>
+      <div class="f wide"><label for="depth">Tiefe (Breite der Streifen)</label><div class="inp"><input id="depth" type="number" inputmode="decimal" min="1" step="0.1" value="10"><span>cm</span></div></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Material</legend>
+    <div class="row">
+      <div class="f"><label for="thick">Plattenstärke y</label><div class="inp"><input id="thick" list="thicks" type="number" inputmode="decimal" min="3" max="60" step="0.5" value="18"><span>mm</span></div>
+        <datalist id="thicks"><option value="8"><option value="10"><option value="12"><option value="15"><option value="16"><option value="18"><option value="19"><option value="22"></datalist></div>
+      <div class="f"><label for="kerf">Sägeblatt</label><div class="inp"><input id="kerf" type="number" inputmode="decimal" min="0" max="10" step="0.5" value="4"><span>mm</span></div></div>
+      <div class="f wide"><label for="preset">Plattenmaß</label>
+        <select id="preset">
+          <option value="250x125">250 × 125 cm</option>
+          <option value="244x122">244 × 122 cm</option>
+          <option value="200x100">200 × 100 cm</option>
+          <option value="280x207">280 × 207 cm</option>
+          <option value="custom">Eigenes Maß</option>
+        </select></div>
+      <div class="f"><label for="sheetL">Länge</label><div class="inp"><input id="sheetL" type="number" inputmode="decimal" min="10" step="1" value="250"><span>cm</span></div></div>
+      <div class="f"><label for="sheetW">Breite</label><div class="inp"><input id="sheetW" type="number" inputmode="decimal" min="10" step="1" value="125"><span>cm</span></div></div>
+      <div class="f wide"><label for="price">Preis pro Platte (optional)</label><div class="inp"><input id="price" type="number" inputmode="decimal" min="0" step="0.5" placeholder="z. B. 65"><span>€</span></div></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Stege</legend>
+    <div class="row">
+      <div class="f"><label for="stub">Steglänge</label><div class="inp"><input id="stub" type="number" inputmode="decimal" min="0.5" step="0.1" value="4"><span>cm</span></div></div>
+      <div class="f"><label for="stubsPer">Stege je Trennstelle</label><div class="inp"><input id="stubsPer" type="number" inputmode="numeric" min="0" max="6" step="1" value="2"></div></div>
+    </div>
+    <label class="chk"><input id="stripStub" type="checkbox" checked><span>Stege als ein Streifen zuschneiden<small>Bauhaus sägt nur den Streifen, die Stege längst du zu Hause ab.</small></span></label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Optionen</legend>
+    <label class="chk"><input id="backSame" type="checkbox" checked><span>Rückwand aus derselben Platte<small>Ohne Haken wird sie separat aufgeführt, z. B. als dünne Hartfaserplatte.</small></span></label>
+    <label class="chk"><input id="rotate" type="checkbox" checked><span>Teile dürfen gedreht werden<small>Ohne Haken laufen alle langen Seiten in Plattenlängsrichtung (Maserung).</small></span></label>
+  </fieldset>
+</form>
+
+<div class="out" id="out">
+  <div class="err" id="err" hidden></div>
+
+  <section class="card kpis" aria-label="Zusammenfassung">
+    <div class="kpi"><div class="k">Außenmaß B × H × T</div><div class="v" id="kDim"></div><div class="n" id="kDimN"></div></div>
+    <div class="kpi"><div class="k">Plattenbedarf</div><div class="v" id="kArea"></div><div class="n" id="kAreaN"></div></div>
+    <div class="kpi"><div class="k">Platten zu kaufen</div><div class="v" id="kSheets"></div><div class="n" id="kSheetsN"></div></div>
+    <div class="kpi"><div class="k">Schnitte im Baumarkt</div><div class="v" id="kCuts"></div><div class="n" id="kCutsN"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Formel</h2>
+    <div class="formula" id="formula"></div>
+  </section>
+
+  <section class="card">
+    <h2>Aufbau von vorn</h2>
+    <div class="split">
+      <div id="front"></div>
+      <ul class="notes" id="notes"></ul>
+    </div>
+    <div class="legend"><span><i class="back"></i>Rückwand</span><span><i class="side"></i>Seitenwand</span><span><i class="shelf"></i>Fachboden</span><span><i class="stub"></i>Steg</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Zuschnittliste</h2>
+    <div id="warnbox"></div>
+    <div class="tw"><table>
+      <thead><tr><th>Teil</th><th class="num">Anz.</th><th class="num">Länge × Breite</th><th class="num">Fläche</th></tr></thead>
+      <tbody id="rowsBody"></tbody>
+      <tfoot id="rowsFoot"></tfoot>
+    </table></div>
+    <div class="order">
+      <div class="order-h"><strong>Zettel für den Zuschnittservice</strong><button type="button" id="copy">Kopieren</button></div>
+      <pre id="orderTxt"></pre>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Aufteilung auf der Platte</h2>
+    <p class="sub" id="packSub"></p>
+    <div class="sheets" id="sheets"></div>
+    <div class="legend"><span><i class="back"></i>Rückwand</span><span><i class="side"></i>Seitenwand</span><span><i class="shelf"></i>Fachboden</span><span><i class="stub"></i>Stege</span><span>Schraffur = ungenutzt</span></div>
+  </section>
+</div>
+</div>
+
+<p class="foot">Alle Maße in der Zuschnittliste sind Fertigmaße. Plattenformate und Schnittregeln unterscheiden sich je nach Markt und Material, bitte vor dem Kauf im Shop prüfen. Die Schnittzahl ist eine Schätzung aus der gerechneten Aufteilung.</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id)};
+var nf=function(v,d){return v.toLocaleString("de-DE",{maximumFractionDigits:d==null?1:d})};
+var esc=function(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})};
+var EPS=0.01;
+var NAMES={back:"Rückwand",side:"Seitenwand",shelf:"Fachboden",stub:"Steg",strip:"Steg-Streifen"};
+var CODES={back:"R",side:"S",shelf:"F",stub:"T",strip:"T"};
+
+function num(id){var v=parseFloat(String($(id).value).replace(",","."));return isFinite(v)?v:NaN}
+function read(){
+  return {c:num("cols"),r:num("rows"),w:num("cw"),h:num("ch"),d:num("depth"),t:num("thick"),
+    kerf:num("kerf"),L:num("sheetL"),W:num("sheetW"),price:num("price"),s:num("stub"),k:num("stubsPer"),
+    stripStub:$("stripStub").checked,backSame:$("backSame").checked,rotate:$("rotate").checked};
+}
+function validate(p){
+  var intOK=function(v,lo,hi){return Number.isInteger(v)&&v>=lo&&v<=hi};
+  if(!intOK(p.c,1,20)||!intOK(p.r,1,20))return "Spalten und Reihen müssen ganze Zahlen zwischen 1 und 20 sein.";
+  if(!(p.w>0&&p.h>0&&p.d>0))return "Fachbreite, Fachhöhe und Tiefe müssen größer als 0 sein.";
+  if(!(p.t>=3&&p.t<=60))return "Die Plattenstärke liegt sinnvoll zwischen 3 und 60 mm.";
+  if(!(p.kerf>=0&&p.kerf<=10))return "Das Sägeblatt liegt zwischen 0 und 10 mm.";
+  if(!(p.L>0&&p.W>0))return "Bitte ein Plattenmaß eintragen.";
+  if(!intOK(p.k,0,6))return "Stege je Trennstelle: ganze Zahl von 0 bis 6.";
+  if(p.k>0&&!(p.s>0))return "Die Steglänge muss größer als 0 sein.";
+  if(p.k*p.s>p.h+EPS)return "Die Stege ("+p.k+" × "+nf(p.s)+" cm) sind zusammen länger als ein Fach hoch ist.";
+  return null;
+}
+
+/* Teile in cm für eine Plattenstärke y (cm). a × b = Länge × Breite */
+function parts(p,y){
+  var W=p.c*p.w+(p.c+1)*y,H=p.r*p.h+(p.r+1)*y,out=[];
+  out.push({key:"back",qty:1,a:H,b:W,sep:!p.backSame});
+  out.push({key:"side",qty:2,a:H,b:p.d});
+  out.push({key:"shelf",qty:p.r+1,a:p.c*p.w+(p.c-1)*y,b:p.d});
+  var n=(p.c-1)*p.r*p.k;
+  if(n>0)out.push({key:"stub",qty:n,a:p.s,b:p.d});
+  return out;
+}
+function area(p,y){return parts(p,y).reduce(function(s,t){return t.sep?s:s+t.qty*t.a*t.b},0)}
+
+/* Flächenformel als Polynom a + b·y + c·y² aus drei Stützstellen */
+function poly(p){
+  var A0=area(p,0),A1=area(p,1),A2=area(p,2);
+  var c=(A2-2*A1+A0)/2,b=A1-A0-c;
+  return {a:A0,b:b,c:c};
+}
+function lin(base,k){
+  var ky=k===0?"":(k===1?"y":nf(k,2)+"y");
+  if(!ky)return nf(base,2);
+  return base>0?nf(base,2)+"+"+ky:ky;
+}
+function term(q,x,z){return q+"·["+x+"·"+z+"]"}
+
+/* ---------- Packen (Guillotine, mehrere Strategien, beste gewinnt) ---------- */
+function pack(items,L,W,kerf,rotate,cfg){
+  var sheets=[],unplaced=[],order=cfg.order(items.slice());
+  function newSheet(){return {free:[{x:0,y:0,w:L,h:W}],placed:[],cuts:0}}
+  order.forEach(function(it){
+    var best=null;
+    var ors=rotate?[[it.w,it.h,false],[it.h,it.w,true]]:[[it.w,it.h,false]];
+    function scan(si,sh){
+      sh.free.forEach(function(f,fi){
+        ors.forEach(function(o){
+          var iw=o[0],ih=o[1];
+          if(iw<=f.w+EPS&&ih<=f.h+EPS){
+            var sc=cfg.score(f,iw,ih);
+            if(!best||sc<best.sc-1e-9)best={sc:sc,si:si,fi:fi,iw:iw,ih:ih,rot:o[2]};
+          }
+        });
+      });
+    }
+    sheets.forEach(function(sh,i){scan(i,sh)});
+    var fresh=null;
+    if(!best){fresh=newSheet();scan(sheets.length,fresh);if(!best){unplaced.push(it);return}sheets.push(fresh)}
+    var sh=sheets[best.si],f=sh.free.splice(best.fi,1)[0];
+    sh.placed.push({key:it.key,x:f.x,y:f.y,w:best.iw,h:best.ih});
+    var rw=f.w-best.iw,rh=f.h-best.ih;
+    sh.cuts+=(rw>EPS?1:0)+(rh>EPS?1:0);
+    var kw=Math.max(0,rw-kerf),kh=Math.max(0,rh-kerf);
+    var mode=cfg.split;
+    if(mode==="SAS")mode=rw<rh?"H":"V";
+    else if(mode==="LAS")mode=rw<rh?"V":"H";
+    else if(mode==="MAX"){
+      var aH=Math.max(f.w*kh,kw*best.ih),aV=Math.max(kw*f.h,best.iw*kh);
+      mode=aH>=aV?"H":"V";
+    }
+    if(mode==="H"){
+      if(kh>EPS)sh.free.push({x:f.x,y:f.y+best.ih+kerf,w:f.w,h:kh});
+      if(kw>EPS)sh.free.push({x:f.x+best.iw+kerf,y:f.y,w:kw,h:best.ih});
+    }else{
+      if(kw>EPS)sh.free.push({x:f.x+best.iw+kerf,y:f.y,w:kw,h:f.h});
+      if(kh>EPS)sh.free.push({x:f.x,y:f.y+best.ih+kerf,w:best.iw,h:kh});
+    }
+  });
+  var cuts=sheets.reduce(function(s,x){return s+x.cuts},0);
+  return {sheets:sheets,unplaced:unplaced,cuts:cuts};
+}
+var FITS={
+  bssf:function(f,w,h){var a=f.w-w,b=f.h-h;return Math.min(a,b)*1e5+Math.max(a,b)},
+  blsf:function(f,w,h){var a=f.w-w,b=f.h-h;return Math.max(a,b)*1e5+Math.min(a,b)},
+  baf:function(f,w,h){return f.w*f.h*10+Math.min(f.w-w,f.h-h)}
+};
+var long=function(i){return Math.max(i.w,i.h)},short=function(i){return Math.min(i.w,i.h)};
+var ORDERS={
+  backfirst:function(a){return a.sort(function(x,y){return (y.key==="back")-(x.key==="back")||long(y)-long(x)})},
+  longest:function(a){return a.sort(function(x,y){return long(y)-long(x)})},
+  area:function(a){return a.sort(function(x,y){return y.w*y.h-x.w*x.h})},
+  shortside:function(a){return a.sort(function(x,y){return short(y)-short(x)||long(y)-long(x)})}
+};
+function bestPack(items,L,W,kerf,rotate){
+  var best=null;
+  Object.keys(FITS).forEach(function(fk){
+    ["H","V","SAS","LAS","MAX"].forEach(function(sp){
+      Object.keys(ORDERS).forEach(function(ok){
+        var r=pack(items,L,W,kerf,rotate,{score:FITS[fk],split:sp,order:ORDERS[ok]});
+        var key=[r.unplaced.length,r.sheets.length,r.cuts];
+        if(!best||key[0]<best.key[0]||(key[0]===best.key[0]&&(key[1]<best.key[1]||(key[1]===best.key[1]&&key[2]<best.key[2])))){r.key=key;best=r}
+      });
+    });
+  });
+  return best;
+}
+
+
+function runs(a){var o=[],i=0,j;while(i<a.length){j=i;while(j<a.length&&a[j]===a[i])j++;o.push(j-i>2?(j-i)+" × "+nf(a[i]):new Array(j-i).fill(nf(a[i])).join(" | "));i=j}return o.join(" | ")}
+/* ---------- Geordnete Aufteilung: durchgehende Streifen, Schnittfolge zum Nachsägen ---------- */
+function structured(items,L,W,k){
+  var big=items.filter(function(i){return i.key==="back"}).sort(function(a,b){return b.wid-a.wid});
+  var st=items.filter(function(i){return i.key!=="back"}).sort(function(a,b){return b.len-a.len});
+  var d=st.length?st[0].wid:0,sheets=[],unplaced=[];
+  function addSheet(){var s={bands:[],used:0};sheets.push(s);return s}
+  function findSheet(h){var f=null;sheets.some(function(x){if(W-x.used>=h-EPS){f=x;return true}});return f||addSheet()}
+  function addBand(s,h,bigs){
+    var band={y:s.used,h:h,bigs:[],rows:[]},x=0;
+    bigs.forEach(function(b){band.bigs.push({key:b.key,x:x,y:band.y,w:b.len,h:b.wid});x+=b.len+k});
+    var n=d>0?Math.floor((h+k+EPS)/(d+k)):0;
+    for(var r=0;r<n;r++)band.rows.push({y:band.y+r*(d+k),cursor:x,pieces:[]});
+    band.x0=x;s.bands.push(band);s.used+=h+k;return band;
+  }
+  big.forEach(function(b){
+    if(b.len>L+EPS||b.wid>W+EPS){unplaced.push(b);return}
+    addBand(findSheet(b.wid),b.wid,[b]);
+  });
+  st.forEach(function(it){
+    if(it.len>L+EPS||it.wid>W+EPS){unplaced.push(it);return}
+    var row=null;
+    sheets.some(function(s){return s.bands.some(function(b){return b.rows.some(function(r){if(L-r.cursor>=it.len-EPS){row=r;return true}})})});
+    if(!row)row=addBand(findSheet(it.wid),it.wid,[]).rows[0];
+    row.pieces.push({key:it.key,x:row.cursor,y:row.y,w:it.len,h:it.wid});
+    row.cursor+=it.len+k;
+  });
+  var total=0;
+  var out=sheets.map(function(s){
+    var placed=[],cuts=0,steps=[];
+    s.bands.forEach(function(b){
+      b.rows=b.rows.filter(function(r){return r.pieces.length});
+      b.bigs.forEach(function(q){placed.push(q)});
+      b.rows.forEach(function(r){r.pieces.forEach(function(q){placed.push(q)})});
+    });
+    var cutBands=s.bands.filter(function(b){return b.y+b.h<W-EPS}).length;
+    if(s.bands.length>1||cutBands)steps.push("Platte längs in "+(s.bands.length>1?"Streifen":"einen Streifen")+" teilen: "+s.bands.map(function(b){return nf(b.h)}).join(" | ")+" mm breit"+(cutBands?" (der Rest ist übrig)":"")+".");
+    cuts+=cutBands;
+    s.bands.forEach(function(b,bi){
+      var tag="Streifen "+(bi+1);
+      b.bigs.forEach(function(q){
+        if(q.x+q.w<L-EPS)cuts++;
+        steps.push(tag+": quer auf "+nf(q.w)+" mm kürzen, das ist die "+NAMES[q.key]+" ("+nf(q.w)+" × "+nf(q.h)+").");
+      });
+      var rs=b.rows;if(!rs.length)return;
+      var lastBottom=rs[rs.length-1].y+d,ripN=rs.length-(lastBottom>=b.y+b.h-EPS?1:0);
+      var sub=rs.length>1||b.bigs.length>0||b.h>d+EPS;
+      if(sub&&ripN>0){cuts+=ripN;steps.push(tag+(b.bigs.length?" (Rest)":"")+": längs in "+rs.length+(rs.length===1?" Streifen":" Streifen")+" à "+nf(d)+" mm teilen.")}
+      rs.forEach(function(r,ri){
+        r.pieces.forEach(function(q){if(q.x+q.w<L-EPS)cuts++});
+        steps.push((rs.length>1||b.bigs.length?tag+"."+(ri+1):tag)+": ablängen auf "+runs(r.pieces.map(function(q){return q.w}))+" mm.");
+      });
+    });
+    total+=cuts;
+    return {placed:placed,cuts:cuts,steps:steps};
+  });
+  return {sheets:out,unplaced:unplaced,cuts:total,structured:true};
+}
+
+/* ---------- Zeichnungen ---------- */
+function frontSVG(p,y,W,H){
+  var m=6,fs=Math.max(W,H)/17,s="";
+  s+='<svg viewBox="'+(-m)+' '+(-m)+' '+(W+2*m+2)+' '+(H+2*m+1)+'" role="img" aria-label="Vorderansicht des Setzkastens">';
+  s+='<rect class="pc back" x="0" y="0" width="'+W+'" height="'+H+'"/>';
+  var i,j,m2;
+  for(i=0;i<=p.r;i++)s+='<rect class="pc shelf" x="'+y+'" y="'+i*(p.h+y)+'" width="'+(W-2*y)+'" height="'+y+'"/>';
+  s+='<rect class="pc side" x="0" y="0" width="'+y+'" height="'+H+'"/><rect class="pc side" x="'+(W-y)+'" y="0" width="'+y+'" height="'+H+'"/>';
+  var gap=(p.h-p.k*p.s)/(p.k+1);
+  for(i=0;i<p.r;i++){
+    var y0=y+i*(p.h+y);
+    for(j=1;j<p.c;j++)for(m2=0;m2<p.k;m2++){
+      s+='<rect class="pc stub" x="'+(j*(p.w+y))+'" y="'+(y0+gap+m2*(p.s+gap))+'" width="'+y+'" height="'+p.s+'"/>';
+    }
+  }
+  var lab=nf(p.w)+"×"+nf(p.h);
+  if(lab.length*fs*.62<p.w*.92)s+='<text class="dt" x="'+(y+p.w/2)+'" y="'+(y+p.h/2+fs*.3)+'" font-size="'+fs+'" text-anchor="middle">'+lab+'</text>';
+  var by=H+3.2;
+  s+='<path class="dim" d="M0 '+by+'H'+W+'M0 '+(by-1)+'V'+(by+1)+'M'+W+' '+(by-1)+'V'+(by+1)+'"/>';
+  s+='<text class="dt" x="'+W/2+'" y="'+(by+fs*1.05)+'" font-size="'+fs+'" text-anchor="middle">'+nf(W)+' cm</text>';
+  var bx=W+3.2;
+  s+='<path class="dim" d="M'+bx+' 0V'+H+'M'+(bx-1)+' 0H'+(bx+1)+'M'+(bx-1)+' '+H+'H'+(bx+1)+'"/>';
+  s+='<text class="dt" transform="translate('+(bx+fs*.95)+' '+H/2+') rotate(90)" font-size="'+fs+'" text-anchor="middle">'+nf(H)+' cm</text>';
+  return s+"</svg>";
+}
+function sheetSVG(sh,L,W,idx){
+  var fs=L/60,s='<svg viewBox="0 0 '+L+' '+W+'" role="img" aria-label="Platte '+(idx+1)+'">';
+  s+='<defs><pattern id="hatch'+idx+'" width="36" height="36" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line class="hatchline" x1="0" y1="0" x2="0" y2="36"/></pattern></defs>';
+  s+='<rect class="sheetbg" style="fill:url(#hatch'+idx+')" x="0" y="0" width="'+L+'" height="'+W+'"/>';
+  sh.placed.forEach(function(q){
+    s+='<rect class="pc '+q.key+'" x="'+q.x+'" y="'+q.y+'" width="'+q.w+'" height="'+q.h+'"/>';
+    var dims=nf(Math.max(q.w,q.h))+"×"+nf(Math.min(q.w,q.h)),code=CODES[q.key],cx=q.x+q.w/2,cy=q.y+q.h/2;
+    var tw=dims.length*fs*.6;
+    if(tw+fs<=q.w&&q.h>=fs*1.6)s+='<text class="pt" x="'+cx+'" y="'+(cy+fs*.33)+'" font-size="'+fs+'" text-anchor="middle">'+dims+'</text>';
+    else if(tw+fs<=q.h&&q.w>=fs*1.6)s+='<text class="pt" transform="translate('+(cx+fs*.33)+' '+cy+') rotate(-90)" font-size="'+fs+'" text-anchor="middle">'+dims+'</text>';
+    else if(q.w>=fs*1.1&&q.h>=fs*1.3)s+='<text class="pt" x="'+cx+'" y="'+(cy+fs*.33)+'" font-size="'+fs*.9+'" text-anchor="middle">'+code+'</text>';
+  });
+  return s+"</svg>";
+}
+
+/* ---------- Ausgabe ---------- */
+function render(){
+  var p=read(),err=validate(p);
+  var out=$("out"),eb=$("err");
+  if(err){eb.textContent=err;eb.hidden=false;out.classList.add("stale");eb.style.opacity=1;return}
+  eb.hidden=true;out.classList.remove("stale");
+
+  var y=p.t/10,W=p.c*p.w+(p.c+1)*y,H=p.r*p.h+(p.r+1)*y,T=p.d+(p.backSame?y:0);
+  var list=parts(p,y),items=[],rows=[],homeCuts=0;
+  function add(key,qty,a,b,extra){
+    var l=Math.round(Math.max(a,b)*100)/10,s=Math.round(Math.min(a,b)*100)/10;
+    rows.push({key:key,qty:qty,l:l,s:s,extra:extra||""});
+    if(extra!=="separat")for(var i=0;i<qty;i++)items.push({key:key,w:l,h:s,len:key==="back"?l:Math.round(a*100)/10,wid:key==="back"?s:Math.round(b*100)/10});
+  }
+  list.forEach(function(t){
+    if(t.sep){add(t.key,t.qty,t.a,t.b,"separat");return}
+    if(t.key==="stub"&&p.stripStub){
+      var maxM=Math.max(1,Math.floor((p.L*10+p.kerf)/(t.a*10+p.kerf))),nPart=Math.ceil(t.qty/maxM);
+      for(var q=0;q<nPart;q++){
+        var m=Math.floor(t.qty/nPart)+(q<t.qty%nPart?1:0);
+        homeCuts+=m-1;
+        add("strip",1,m*t.a+(m-1)*p.kerf/10,t.b,"zu Hause in "+m+" Stege à "+nf(t.a*10)+" mm sägen ("+(m-1)+" Schnitte)");
+      }
+    }else add(t.key,t.qty,t.a,t.b);
+  });
+  var stubN=(p.c-1)*p.r*p.k;
+
+  /* Formel */
+  var pl=poly(p),A=area(p,y);
+  var f=[];
+  var fb=lin(p.r*p.h,p.r+1),fw=lin(p.c*p.w,p.c+1),fs2=p.c>1?lin(p.c*p.w,p.c-1):nf(p.c*p.w,2);
+  if(p.backSame)f.push(term(1,"("+fb+")","("+fw+")"));
+  f.push(term(2,nf(p.d,2),"("+fb+")"));
+  f.push(term(p.r+1,nf(p.d,2),"("+fs2+")"));
+  if(stubN>0)f.push(term(stubN,nf(p.s,2),nf(p.d,2)));
+  var polyTxt=nf(pl.a,2)+(Math.abs(pl.b)>1e-9?" + "+nf(pl.b,2)+"·y":"")+(Math.abs(pl.c)>1e-9?" + "+nf(pl.c,2)+"·y²":"");
+  $("formula").innerHTML=
+    esc("Fläche = "+f.join(" + "))+"<br>"+
+    '<span class="res">'+esc("= "+polyTxt)+"</span> <span class=\"plain\">cm²</span><br>"+
+    '<span class="plain">Mit y = '+nf(y,2)+" cm ergibt das "+nf(A,0)+" cm², also "+nf(A/1e4,3)+" m² reines Plattenmaterial."+
+    (p.backSame?"":" Die Rückwand ist hier nicht enthalten.")+"</span>";
+
+  /* Packen */
+  var free=bestPack(items,p.L*10,p.W*10,p.kerf,p.rotate),ord=structured(items,p.L*10,p.W*10,p.kerf);
+  var res=(!ord.unplaced.length&&ord.sheets.length<=free.sheets.length)?ord:free;
+  var nS=res.sheets.length,sheetArea=p.L*p.W;
+  var used=items.reduce(function(s,i){return s+i.w*i.h},0)/100;
+  $("kDim").textContent=nf(W)+" × "+nf(H)+" × "+nf(T);
+  $("kDimN").textContent="cm, außen";
+  $("kArea").textContent=nf(A/1e4,2)+" m²";
+  $("kAreaN").textContent="bei y = "+nf(p.t,1)+" mm";
+  $("kSheets").textContent=nS+" × "+nf(p.L,0)+" × "+nf(p.W,0);
+  var waste=nS?(1-used/(nS*sheetArea))*100:0;
+  var price=p.price>0?" · "+nf(nS*p.price,2)+" €":"";
+  $("kSheetsN").textContent=nf(waste,0)+" % der Platte ungenutzt"+price;
+  $("kCuts").textContent="ca. "+res.cuts;
+  $("kCutsN").textContent=stubN>0&&p.stripStub?"+ "+homeCuts+" Schnitte zu Hause":"Zuschnitt auf der Platte";
+
+  /* Vorderansicht + Notizen */
+  $("front").innerHTML=frontSVG(p,y,W,H);
+  var notes=[
+    "Die Seitenwände laufen in voller Höhe von "+nf(H)+" cm durch.",
+    "Die "+(p.r+1)+" Fachböden sitzen dazwischen und sind deshalb 2·y kürzer als die Rückwand breit ist: "+nf(p.c*p.w+(p.c-1)*y)+" cm.",
+    "Fach innen: "+nf(p.w)+" × "+nf(p.h)+" cm, Tiefe "+nf(p.d)+" cm."];
+  if(stubN>0)notes.push(stubN+" Stege ("+nf(p.s*10)+" mm hoch) trennen die Fächer: "+(p.c-1)+" Trennstellen × "+p.r+" Reihen × "+p.k+" Stege. Sie liegen gleichmäßig verteilt, die genaue Lage ist frei.");
+  else notes.push("Ohne Stege gibt es keine Trennung zwischen den Fächern.");
+  $("notes").innerHTML=notes.map(function(n){return "<li>"+esc(n)+"</li>"}).join("");
+
+  /* Tabelle */
+  var tb="",totalQty=0;
+  rows.forEach(function(r){
+    totalQty+=r.extra==="separat"?0:r.qty;
+    var ex=r.extra==="separat"?"separate Platte, nicht im Zuschnitt unten":r.extra;
+    tb+='<tr><td><span class="sw '+r.key+'"></span>'+NAMES[r.key]+(ex?"<small>"+esc(ex)+"</small>":"")+'</td><td class="num">'+r.qty+'</td><td class="num">'+nf(r.l)+" × "+nf(r.s)+' mm</td><td class="num">'+nf(r.qty*r.l*r.s/100,0)+' cm²</td></tr>';
+  });
+  $("rowsBody").innerHTML=tb;
+  $("rowsFoot").innerHTML='<tr><td>Summe</td><td class="num">'+totalQty+'</td><td></td><td class="num">'+nf(used,0)+' cm²</td></tr>';
+
+  var wb="";
+  if(res.unplaced.length)wb='<p class="warn">'+res.unplaced.length+" Teil(e) passen nicht auf eine Platte dieser Größe. Bitte ein größeres Plattenmaß wählen oder die Fächer verkleinern.</p>";
+  $("warnbox").innerHTML=wb;
+
+  /* Zettel */
+  var tx="Zuschnitt Setzkasten, "+p.c+" × "+p.r+" Fächer\n";
+  tx+="Plattenstärke "+nf(p.t)+" mm, Platte "+nf(p.L*10,0)+" × "+nf(p.W*10,0)+" mm, "+nS+" Stück\n";
+  tx+=p.rotate?"":"Maserung: Länge = Faserrichtung\n";
+  tx+="\nAnz.  Länge × Breite (mm)   Teil\n";
+  rows.forEach(function(r){
+    if(r.extra==="separat")return;
+    var dim=nf(r.l)+" × "+nf(r.s);
+    tx+=String(r.qty).padStart(3)+"×  "+dim.padEnd(22)+" "+NAMES[r.key]+"\n";
+  });
+  if(rows.some(function(r){return r.extra==="separat"}))tx+="\nRückwand separat: "+nf(rows[0].l)+" × "+nf(rows[0].s)+" mm\n";
+  $("orderTxt").textContent=tx.trimEnd();
+
+  /* Platten */
+  $("packSub").textContent=nS+(nS===1?" Platte":" Platten")+" mit ca. "+res.cuts+" Schnitten. "+(res.structured?"Jeder Schnitt geht durch ein ganzes Stück, die Reihenfolge steht unter der Zeichnung. ":"Freie Aufteilung, weil sie eine Platte spart. ")+"Maße in mm, Sägeverlust von "+nf(p.kerf)+" mm ist eingerechnet.";
+  $("sheets").innerHTML=res.sheets.map(function(sh,i){
+    var a=sh.placed.reduce(function(s,q){return s+q.w*q.h},0)/(p.L*10*p.W*10)*100;
+    return '<figure class="sheet">'+sheetSVG(sh,p.L*10,p.W*10,i)+"<figcaption>Platte "+(i+1)+": "+sh.placed.length+" Teile, "+nf(100-a,0)+" % ungenutzt, "+sh.cuts+" Schnitte</figcaption>"+(sh.steps&&sh.steps.length?'<ol class="steps">'+sh.steps.map(function(t){return "<li>"+esc(t)+"</li>"}).join("")+"</ol>":"")+"</figure>";
+  }).join("");
+}
+
+/* ---------- Events ---------- */
+$("cfg").addEventListener("input",function(e){
+  if(e.target.id==="sheetL"||e.target.id==="sheetW"){
+    var v=num("sheetL")+"x"+num("sheetW"),sel=$("preset"),ok=false;
+    Array.prototype.forEach.call(sel.options,function(o){if(o.value===v)ok=true});
+    sel.value=ok?v:"custom";
+  }
+  render();
+});
+$("preset").addEventListener("change",function(){
+  var v=this.value;if(v==="custom")return;
+  var a=v.split("x");$("sheetL").value=a[0];$("sheetW").value=a[1];render();
+});
+$("copy").addEventListener("click",function(){
+  var btn=this,txt=$("orderTxt").textContent;
+  function done(ok){btn.textContent=ok?"Kopiert":"Text markiert";setTimeout(function(){btn.textContent="Kopieren"},1600)}
+  function sel(){var r=document.createRange();r.selectNodeContents($("orderTxt"));var s=getSelection();s.removeAllRanges();s.addRange(r);done(false)}
+  try{navigator.clipboard.writeText(txt).then(function(){done(true)},sel)}catch(e){sel()}
+});
+render();
+})();
+</script>
+</body>
+</html>
