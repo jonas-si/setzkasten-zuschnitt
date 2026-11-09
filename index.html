@@ -377,14 +377,22 @@ function structured(items,L,W,k){
     if(b.len>L+EPS||b.wid>W+EPS){unplaced.push(b);return}
     addBand(findSheet(b.wid),b.wid,[b]);
   });
-  st.forEach(function(it){
-    if(it.len>L+EPS||it.wid>W+EPS){unplaced.push(it);return}
-    var row=null;
-    sheets.some(function(s){return s.bands.some(function(b){return b.rows.some(function(r){if(L-r.cursor>=it.len-EPS){row=r;return true}})})});
-    if(!row)row=addBand(findSheet(it.wid),it.wid,[]).rows[0];
-    row.pieces.push({key:it.key,x:row.cursor,y:row.y,w:it.len,h:it.wid});
-    row.cursor+=it.len+k;
-  });
+  /* Reihe für Reihe füllen: zuerst die häufigste Länge, damit gleich lange Teile direkt nebeneinander liegen */
+  var remaining=st.slice();
+  function openRow(){var f=null;sheets.some(function(s){return s.bands.some(function(b){return b.rows.some(function(r){if(!r.closed){f=r;return true}})})});return f}
+  while(remaining.length){
+    if(remaining[0].len>L+EPS||remaining[0].wid>W+EPS){unplaced.push(remaining.shift());continue}
+    var row=openRow();
+    if(!row)row=addBand(findSheet(remaining[0].wid),remaining[0].wid,[]).rows[0];
+    var cnt={};remaining.forEach(function(x){cnt[x.len]=(cnt[x.len]||0)+1});
+    var lens=Object.keys(cnt).map(Number).sort(function(m,n){return cnt[n]-cnt[m]||n-m});
+    var first=null;lens.some(function(ln){if(L-row.cursor>=ln-EPS){first=ln;return true}});
+    var left=[];
+    var put=function(it){row.pieces.push({key:it.key,x:row.cursor,y:row.y,w:it.len,h:it.wid});row.cursor+=it.len+k};
+    if(first!==null){remaining.forEach(function(it){if(it.len===first&&L-row.cursor>=it.len-EPS)put(it);else left.push(it)});remaining=left;left=[]}
+    remaining.forEach(function(it){if(L-row.cursor>=it.len-EPS)put(it);else left.push(it)});
+    remaining=left;row.closed=true;
+  }
   var total=0;
   var out=sheets.map(function(s){
     var placed=[],cuts=0,steps=[];
