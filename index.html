@@ -190,7 +190,7 @@ ul.notes li{max-width:75ch}
     <div class="kpi"><div class="k">Außenmaß B × H × T</div><div class="v" id="kDim"></div><div class="n" id="kDimN"></div></div>
     <div class="kpi"><div class="k">Plattenbedarf</div><div class="v" id="kArea"></div><div class="n" id="kAreaN"></div></div>
     <div class="kpi"><div class="k">Platten zu kaufen</div><div class="v" id="kSheets"></div><div class="n" id="kSheetsN"></div></div>
-    <div class="kpi"><div class="k">Schnitte im Baumarkt</div><div class="v" id="kCuts"></div><div class="n" id="kCutsN"></div></div>
+    <div class="kpi"><div class="k">Säge-Einstellungen</div><div class="v" id="kCuts"></div><div class="n" id="kCutsN"></div></div>
   </section>
 
   <section class="card">
@@ -226,6 +226,12 @@ ul.notes li{max-width:75ch}
     <p class="sub" id="packSub"></p>
     <div class="sheets" id="sheets"></div>
     <div class="legend"><span><i class="back"></i>Rückwand</span><span><i class="side"></i>Seitenwand</span><span><i class="shelf"></i>Fachboden</span><span><i class="stub"></i>Stege</span><span>Schraffur = ungenutzt</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Sägeplan</h2>
+    <p class="sub" id="planSub"></p>
+    <ol class="steps" id="plan"></ol>
   </section>
 </div>
 </div>
@@ -360,69 +366,96 @@ function bestPack(items,L,W,kerf,rotate){
 
 function runs(a){var o=[],i=0,j;while(i<a.length){j=i;while(j<a.length&&a[j]===a[i])j++;o.push(j-i>2?(j-i)+" × "+nf(a[i]):new Array(j-i).fill(nf(a[i])).join(" | "));i=j}return o.join(" | ")}
 /* ---------- Geordnete Aufteilung: durchgehende Streifen, Schnittfolge zum Nachsägen ---------- */
-function structured(items,L,W,k){
+function structured(items,L,W,k,opt){
   var big=items.filter(function(i){return i.key==="back"}).sort(function(a,b){return b.wid-a.wid});
   var st=items.filter(function(i){return i.key!=="back"}).sort(function(a,b){return b.len-a.len});
-  var d=st.length?st[0].wid:0,sheets=[],unplaced=[];
+  var d=st.length?st[0].wid:0,sheets=[],unplaced=[],all=[];
   function addSheet(){var s={bands:[],used:0};sheets.push(s);return s}
   function findSheet(h){var f=null;sheets.some(function(x){if(W-x.used>=h-EPS){f=x;return true}});return f||addSheet()}
   function addBand(s,h,bigs){
     var band={y:s.used,h:h,bigs:[],rows:[]},x=0;
     bigs.forEach(function(b){band.bigs.push({key:b.key,x:x,y:band.y,w:b.len,h:b.wid});x+=b.len+k});
     var n=d>0?Math.floor((h+k+EPS)/(d+k)):0;
-    for(var r=0;r<n;r++)band.rows.push({y:band.y+r*(d+k),cursor:x,pieces:[]});
-    band.x0=x;s.bands.push(band);s.used+=h+k;return band;
+    for(var r=0;r<n;r++)band.rows.push({y:band.y+r*(d+k),x0:x,cursor:x,pieces:[]});
+    s.bands.push(band);s.used+=h+k;return band;
   }
-  big.forEach(function(b){
-    if(b.len>L+EPS||b.wid>W+EPS){unplaced.push(b);return}
-    addBand(findSheet(b.wid),b.wid,[b]);
-  });
+  function placeBigs(){
+    big.forEach(function(b){
+      if(b.len>L+EPS||b.wid>W+EPS){unplaced.push(b);return}
+      addBand(findSheet(b.wid),b.wid,[b]);
+    });
+  }
   /* Reihe für Reihe füllen: zuerst die häufigste Länge, damit gleich lange Teile direkt nebeneinander liegen */
-  var remaining=st.slice();
-  function openRow(){var f=null;sheets.some(function(s){return s.bands.some(function(b){return b.rows.some(function(r){if(!r.closed){f=r;return true}})})});return f}
-  while(remaining.length){
-    if(remaining[0].len>L+EPS||remaining[0].wid>W+EPS){unplaced.push(remaining.shift());continue}
-    var row=openRow();
-    if(!row)row=addBand(findSheet(remaining[0].wid),remaining[0].wid,[]).rows[0];
-    var cnt={};remaining.forEach(function(x){cnt[x.len]=(cnt[x.len]||0)+1});
-    var lens=Object.keys(cnt).map(Number).sort(function(m,n){return cnt[n]-cnt[m]||n-m});
-    var first=null;lens.some(function(ln){if(L-row.cursor>=ln-EPS){first=ln;return true}});
-    var left=[];
-    var put=function(it){row.pieces.push({key:it.key,x:row.cursor,y:row.y,w:it.len,h:it.wid});row.cursor+=it.len+k};
-    if(first!==null){remaining.forEach(function(it){if(it.len===first&&L-row.cursor>=it.len-EPS)put(it);else left.push(it)});remaining=left;left=[]}
-    remaining.forEach(function(it){if(L-row.cursor>=it.len-EPS)put(it);else left.push(it)});
-    remaining=left;row.closed=true;
+  function placeStrips(){
+    var remaining=st.slice();
+    function openRow(){var f=null;sheets.some(function(s){return s.bands.some(function(b){return b.rows.some(function(r){if(!r.closed){f=r;return true}})})});return f}
+    while(remaining.length){
+      if(remaining[0].len>L+EPS||remaining[0].wid>W+EPS){unplaced.push(remaining.shift());continue}
+      var row=openRow();
+      if(!row)row=addBand(findSheet(remaining[0].wid),remaining[0].wid,[]).rows[0];
+      var cnt={};remaining.forEach(function(x){cnt[x.len]=(cnt[x.len]||0)+1});
+      var lens=Object.keys(cnt).map(Number).sort(function(m,n){return cnt[n]-cnt[m]||n-m});
+      var first=null;lens.some(function(ln){if(L-row.cursor>=ln-EPS){first=ln;return true}});
+      var left=[];
+      var put=function(it){row.pieces.push({key:it.key,x:row.cursor,y:row.y,w:it.len,h:it.wid});row.cursor+=it.len+k};
+      if(first!==null){remaining.forEach(function(it){if(it.len===first&&L-row.cursor>=it.len-EPS)put(it);else left.push(it)});remaining=left;left=[]}
+      remaining.forEach(function(it){if(L-row.cursor>=it.len-EPS)put(it);else left.push(it)});
+      remaining=left;row.closed=true;
+    }
   }
-  var total=0;
-  var out=sheets.map(function(s){
-    var placed=[],cuts=0,steps=[];
+  if(opt.bigLast){placeStrips();placeBigs()}else{placeBigs();placeStrips()}
+
+  var total=0,multi=false;
+  var out=sheets.map(function(s,si){
+    var placed=[],cuts=0;
+    var pre=sheets.length>1?"Platte "+(si+1)+": ":"";
+    function mk(dir,m,label,parent){
+      var c={id:all.length,dir:dir,m:Math.round(m*10)/10,label:pre+label,parent:parent,sheet:si};
+      all.push(c);cuts++;return c.id;
+    }
+    var src=null;
     s.bands.forEach(function(b){
       b.rows=b.rows.filter(function(r){return r.pieces.length});
+      b.rows.forEach(function(r){
+        if(opt.order==="asc")r.pieces.sort(function(m,n){return m.w-n.w});
+        else if(opt.order==="desc")r.pieces.sort(function(m,n){return n.w-m.w});
+        var x=r.x0;r.pieces.forEach(function(q){q.x=x;x+=q.w+k});
+      });
       b.bigs.forEach(function(q){placed.push(q)});
       b.rows.forEach(function(r){r.pieces.forEach(function(q){placed.push(q)})});
-    });
-    var cutBands=s.bands.filter(function(b){return b.y+b.h<W-EPS}).length;
-    if(s.bands.length>1||cutBands)steps.push("Platte längs in "+(s.bands.length>1?"Streifen":"einen Streifen")+" teilen: "+s.bands.map(function(b){return nf(b.h)}).join(" | ")+" mm breit"+(cutBands?" (der Rest ist übrig)":"")+".");
-    cuts+=cutBands;
-    s.bands.forEach(function(b,bi){
-      var tag="Streifen "+(bi+1);
-      b.bigs.forEach(function(q){
-        if(q.x+q.w<L-EPS)cuts++;
-        steps.push(tag+": quer auf "+nf(q.w)+" mm kürzen, das ist die "+NAMES[q.key]+" ("+nf(q.w)+" × "+nf(q.h)+").");
+      /* Schnittbaum: jeder Schnitt kennt das Stück, das schon da sein muss */
+      var res=src;
+      if(b.y+b.h<W-EPS){
+        res=mk("L",b.h,b.bigs.length?"Band für "+NAMES[b.bigs[0].key]+" abtrennen":"Streifen abtrennen",src);
+      }
+      var p=res;
+      b.bigs.forEach(function(q){if(q.x+q.w<L-EPS)p=mk("Q",q.w,NAMES[q.key],p)});
+      var pr=p;
+      b.rows.forEach(function(r){
+        var rowSrc=pr;
+        if(r.y+d<b.y+b.h-EPS){pr=mk("L",d,"Teilstreifen abtrennen",pr);rowSrc=pr}
+        var c=rowSrc;
+        r.pieces.forEach(function(q){if(q.x+q.w<L-EPS)c=mk("Q",q.w,NAMES[q.key],c)});
       });
-      var rs=b.rows;if(!rs.length)return;
-      var lastBottom=rs[rs.length-1].y+d,ripN=rs.length-(lastBottom>=b.y+b.h-EPS?1:0);
-      var sub=rs.length>1||b.bigs.length>0||b.h>d+EPS;
-      if(sub&&ripN>0){cuts+=ripN;steps.push(tag+(b.bigs.length?" (Rest)":"")+": längs in "+rs.length+(rs.length===1?" Streifen":" Streifen")+" à "+nf(d)+" mm teilen.")}
-      rs.forEach(function(r,ri){
-        r.pieces.forEach(function(q){if(q.x+q.w<L-EPS)cuts++});
-        steps.push((rs.length>1||b.bigs.length?tag+"."+(ri+1):tag)+": ablängen auf "+runs(r.pieces.map(function(q){return q.w}))+" mm.");
-      });
+      if(b.y+b.h<W-EPS)src=res;
     });
     total+=cuts;
-    return {placed:placed,cuts:cuts,steps:steps};
+    return {placed:placed,cuts:cuts};
   });
-  return {sheets:out,unplaced:unplaced,cuts:total,structured:true};
+  /* Reihenfolge so wählen, dass der Anschlag möglichst selten verstellt wird */
+  var done={},seq=[],cur=null;
+  while(seq.length<all.length){
+    var avail=all.filter(function(c){return !done[c.id]&&(c.parent===null||done[c.parent])});
+    var pick=cur===null?[]:avail.filter(function(c){return c.m===cur});
+    if(!pick.length){
+      var cn={};avail.forEach(function(c){cn[c.m]=(cn[c.m]||0)+1});
+      cur=Number(Object.keys(cn).sort(function(m,n){return cn[n]-cn[m]||m-n})[0]);
+      pick=avail.filter(function(c){return c.m===cur});
+    }
+    pick.forEach(function(c){done[c.id]=1;seq.push(c)});
+  }
+  var settings=0;seq.forEach(function(c,i){if(i===0||seq[i-1].m!==c.m)settings++});
+  return {sheets:out,unplaced:unplaced,cuts:total,structured:true,seq:seq,settings:settings};
 }
 
 /* ---------- Zeichnungen ---------- */
@@ -508,7 +541,12 @@ function render(){
     (p.backSame?"":" Die Rückwand ist hier nicht enthalten.")+"</span>";
 
   /* Packen */
-  var free=bestPack(items,p.L*10,p.W*10,p.kerf,p.rotate),ord=structured(items,p.L*10,p.W*10,p.kerf);
+  var free=bestPack(items,p.L*10,p.W*10,p.kerf,p.rotate),ord=null;
+  ["asc","desc","group"].forEach(function(o){[true,false].forEach(function(bl){
+    var r=structured(items,p.L*10,p.W*10,p.kerf,{order:o,bigLast:bl});
+    var key=[r.unplaced.length,r.sheets.length,r.settings,r.cuts];
+    if(!ord||key[0]<ord.key[0]||(key[0]===ord.key[0]&&(key[1]<ord.key[1]||(key[1]===ord.key[1]&&(key[2]<ord.key[2]||(key[2]===ord.key[2]&&key[3]<ord.key[3])))))){r.key=key;ord=r}
+  })});
   var res=(!ord.unplaced.length&&ord.sheets.length<=free.sheets.length)?ord:free;
   var nS=res.sheets.length,sheetArea=p.L*p.W;
   var used=items.reduce(function(s,i){return s+i.w*i.h},0)/100;
@@ -520,8 +558,8 @@ function render(){
   var waste=nS?(1-used/(nS*sheetArea))*100:0;
   var price=p.price>0?" · "+nf(nS*p.price,2)+" €":"";
   $("kSheetsN").textContent=nf(waste,0)+" % der Platte ungenutzt"+price;
-  $("kCuts").textContent="ca. "+res.cuts;
-  $("kCutsN").textContent=stubN>0&&p.stripStub?"+ "+homeCuts+" Schnitte zu Hause":"Zuschnitt auf der Platte";
+  $("kCuts").textContent=res.structured?String(res.settings):"–";
+  $("kCutsN").textContent=(res.structured?"bei ":"freie Aufteilung, ")+"ca. "+res.cuts+" Schnitten"+(stubN>0&&p.stripStub?", + "+homeCuts+" zu Hause":"");
 
   /* Vorderansicht + Notizen */
   $("front").innerHTML=frontSVG(p,y,W,H);
@@ -560,8 +598,23 @@ function render(){
   if(rows.some(function(r){return r.extra==="separat"}))tx+="\nRückwand separat: "+nf(rows[0].l)+" × "+nf(rows[0].s)+" mm\n";
   $("orderTxt").textContent=tx.trimEnd();
 
+  /* Sägeplan */
+  if(res.structured){
+    var groups=[];
+    res.seq.forEach(function(c){var g=groups[groups.length-1];if(g&&g.m===c.m)g.cuts.push(c);else groups.push({m:c.m,cuts:[c]})});
+    $("planSub").textContent=res.settings+(res.settings===1?" Einstellung":" Einstellungen")+": Der Anschlag wird nur verstellt, wenn das nächste Maß kommt. Gleiche Maße sind zusammengelegt, jeder Schnitt kommt erst, wenn sein Stück schon abgetrennt ist.";
+    $("plan").innerHTML=groups.map(function(g){
+      var by={},ord=[];
+      g.cuts.forEach(function(c){var key=(c.dir==="L"?"längs":"quer")+" · "+c.label;if(!by[key]){by[key]=0;ord.push(key)}by[key]++});
+      return "<li><strong>"+nf(g.m)+" mm</strong> ("+g.cuts.length+(g.cuts.length===1?" Schnitt":" Schnitte")+"): "+ord.map(function(k2){return esc(by[k2]+"× "+k2)}).join("; ")+"</li>";
+    }).join("");
+  }else{
+    $("planSub").textContent="Für die freie Aufteilung gibt es keinen Sägeplan. Mit einer anderen Plattengröße oder weniger Fächern wird die geordnete Aufteilung gewählt.";
+    $("plan").innerHTML="";
+  }
+
   /* Platten */
-  $("packSub").textContent=nS+(nS===1?" Platte":" Platten")+" mit ca. "+res.cuts+" Schnitten. "+(res.structured?"Jeder Schnitt geht durch ein ganzes Stück, die Reihenfolge steht unter der Zeichnung. ":"Freie Aufteilung, weil sie eine Platte spart. ")+"Maße in mm, Sägeverlust von "+nf(p.kerf)+" mm ist eingerechnet.";
+  $("packSub").textContent=nS+(nS===1?" Platte":" Platten")+" mit ca. "+res.cuts+" Schnitten. "+(res.structured?"Jeder Schnitt geht durch ein ganzes Stück, die Reihenfolge steht im Sägeplan darunter. ":"Freie Aufteilung, weil sie eine Platte spart. ")+"Maße in mm, Sägeverlust von "+nf(p.kerf)+" mm ist eingerechnet.";
   $("sheets").innerHTML=res.sheets.map(function(sh,i){
     var a=sh.placed.reduce(function(s,q){return s+q.w*q.h},0)/(p.L*10*p.W*10)*100;
     return '<figure class="sheet">'+sheetSVG(sh,p.L*10,p.W*10,i)+"<figcaption>Platte "+(i+1)+": "+sh.placed.length+" Teile, "+nf(100-a,0)+" % ungenutzt, "+sh.cuts+" Schnitte</figcaption>"+(sh.steps&&sh.steps.length?'<ol class="steps">'+sh.steps.map(function(t){return "<li>"+esc(t)+"</li>"}).join("")+"</ol>":"")+"</figure>";
